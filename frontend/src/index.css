@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-neo-white text-neo-black font-sans;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-mono font-bold uppercase;
+  }
+}
+
+@layer components {
+  .neo-btn {
+    @apply px-6 py-3 bg-neo-black text-neo-white font-mono font-bold border-2 border-neo-black shadow-neo active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all hover:bg-neo-black/90;
+  }
+  .neo-card {
+    @apply border-4 border-neo-black bg-white p-6 shadow-neo;
+  }
+  .neo-input {
+    @apply border-2 border-neo-black p-3 w-full font-mono focus:outline-none focus:shadow-neo transition-all;
+  }
+}
