@@ -27,6 +27,6 @@ COPY . .
 # Expose port (Cloud providers like Railway/Render use dynamic $PORT, but we expose 8000 as default)
 EXPOSE 8000
 
-# Start Uvicorn loop 
-# (Note: In production, you would bind to PostgreSQL via DATABASE_URL env var instead of local sqlite)
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Start Uvicorn loop (Using shell form to expansion $PORT)
+CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}
+

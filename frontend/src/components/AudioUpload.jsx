@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Upload, Check } from 'lucide-react';
 import axios from 'axios';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 const MediaUpload = ({ onUploadSuccess }) => {
     const [file, setFile] = useState(null);
     const [title, setTitle] = useState('');
@@ -16,30 +18,13 @@ const MediaUpload = ({ onUploadSuccess }) => {
         setLoading(true);
 
         try {
-            // 1. Simulate EIP-712 / personal_sign (Costs 0$ gas)
-            const message = `Sign this message to prove you own the media: ${title} at ${new Date().toISOString()}`;
-            console.log("Requesting signature for:", message);
-
-            // Mock signature (In a real app, this would be window.ethereum.request)
-            const mockSignature = "0x4ed2...fake_signature";
-            const mockAddress = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e";
-
-            // 2. Verify signature on backend
-            // In a real dev environment, this would hit the API we just created
-            // await axios.post('http://localhost:8000/api/auth/verify', {
-            //     address: mockAddress,
-            //     signature: mockSignature,
-            //     message: message
-            // });
-
-            // 3. Upload Media
             const formData = new FormData();
             formData.append('file', file);
             formData.append('title', title);
             formData.append('price', price);
             formData.append('media_type', mediaType);
 
-            await axios.post('http://localhost:8000/api/media/upload', formData, {
+            await axios.post(`${API_URL}/api/media/upload`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
 
@@ -48,10 +33,10 @@ const MediaUpload = ({ onUploadSuccess }) => {
             setFile(null);
             setMediaType('audio');
             if (onUploadSuccess) onUploadSuccess();
-            alert("SUCCESS: Media verified on-chain & published!");
+            alert("SUCCESS: Published to Cloud Architecture!");
         } catch (error) {
-            console.error("Upload/Auth failed", error);
-            const msg = error.response?.data?.detail || "Auth/Upload failed!";
+            console.error("Upload failed", error);
+            const msg = error.response?.data?.detail || "Upload failed!";
             alert(msg);
         } finally {
             setLoading(false);
@@ -59,50 +44,51 @@ const MediaUpload = ({ onUploadSuccess }) => {
     };
 
     return (
-        <div className="neo-card">
-            <h2 className="text-xl mb-4 flex items-center gap-2 font-black uppercase">
-                <Upload /> UPLOAD MEDIA
+        <div className="glass-card p-8">
+            <h2 className="text-xl font-black mb-8 flex items-center gap-3">
+                <Upload className="text-brand-secondary" />
+                <span className="glow-text tracking-tighter uppercase">Forge New Asset</span>
             </h2>
-            <form onSubmit={handleUpload} className="space-y-4">
-                <div>
-                    <label className="block font-mono text-sm mb-1">Title</label>
+            <form onSubmit={handleUpload} className="space-y-6">
+                <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-black text-white/30 px-2 tracking-tighter">Asset Title</label>
                     <input
                         type="text"
                         value={title}
                         onChange={e => setTitle(e.target.value)}
-                        className="neo-input"
-                        placeholder="e.g. Cyberpunk Vibes"
+                        className="cyber-input"
+                        placeholder="e.g. Neo-Tokyo Resonance"
                         required
                     />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className="block font-mono text-sm mb-1">Price ($)</label>
+                    <div className="space-y-1">
+                        <label className="text-[10px] uppercase font-black text-white/30 px-2 tracking-tighter">Yield Price ($)</label>
                         <input
                             type="number"
                             step="0.01"
                             value={price}
                             onChange={e => setPrice(e.target.value)}
-                            className="neo-input"
+                            className="cyber-input"
                             required
                         />
                     </div>
-                    <div>
-                        <label className="block font-mono text-sm mb-1">Type</label>
+                    <div className="space-y-1">
+                        <label className="text-[10px] uppercase font-black text-white/30 px-2 tracking-tighter">Engine Type</label>
                         <select
                             value={mediaType}
                             onChange={e => setMediaType(e.target.value)}
-                            className="neo-input uppercase"
+                            className="cyber-input bg-[#050505] appearance-none"
                         >
-                            <option value="audio">Audio</option>
-                            <option value="reel">Reel (15s Max)</option>
-                            <option value="video">Video (20m Max)</option>
+                            <option value="audio">Audio Node</option>
+                            <option value="reel">Rapid Reel</option>
+                            <option value="video">Full Vision</option>
                         </select>
                     </div>
                 </div>
 
-                <div className="border-2 border-dashed border-neo-black p-6 text-center hover:bg-gray-50 cursor-pointer relative">
+                <div className="border-2 border-dashed border-white/5 p-10 rounded-2xl text-center hover:bg-white/[0.02] hover:border-brand-secondary/40 cursor-pointer relative transition-all group">
                     <input
                         type="file"
                         accept="audio/*,video/mp4,video/webm"
@@ -110,20 +96,27 @@ const MediaUpload = ({ onUploadSuccess }) => {
                         className="absolute inset-0 opacity-0 cursor-pointer"
                     />
                     {file ? (
-                        <div className="text-green-600 font-bold flex items-center justify-center gap-2">
-                            <Check size={20} /> <span className="truncate max-w-[200px]">{file.name}</span>
+                        <div className="text-brand-secondary font-black flex flex-col items-center gap-2">
+                            <Check className="p-2 bg-brand-secondary/20 rounded-full" size={40} />
+                            <span className="text-xs truncate max-w-[200px]">{file.name}</span>
                         </div>
                     ) : (
-                        <span className="text-gray-500 font-mono">DRAG & DROP MEDIA</span>
+                        <div className="space-y-2">
+                            <div className="text-white/20 font-black text-[10px] uppercase tracking-[0.2em] group-hover:text-white/40">Transmit Data</div>
+                            <div className="text-[8px] text-white/10 uppercase font-bold tracking-widest">DRAG ASSET HERE</div>
+                        </div>
                     )}
                 </div>
 
                 <button
                     type="submit"
                     disabled={loading}
-                    className={`neo-btn w-full bg-neo-pink text-neo-black ${loading ? 'opacity-50' : ''}`}
+                    className={`w-full py-4 rounded-xl font-black text-sm uppercase tracking-widest transition-all ${loading
+                            ? 'bg-white/5 text-white/20'
+                            : 'bg-brand-secondary text-black hover:shadow-[0_0_25px_rgba(217,70,239,0.4)] hover:scale-[1.02] active:scale-[0.98]'
+                        }`}
                 >
-                    {loading ? 'UPLOADING...' : 'PUBLISH'}
+                    {loading ? 'Transmitting...' : 'Initiate Publish'}
                 </button>
             </form>
         </div>

@@ -75,5 +75,13 @@ class ExchangeClient:
     async def close(self):
         await self.exchange.close()
 
+# Singleton for sharing across modules
+exchange_client = ExchangeClient(
+    exchange_id='binance', 
+    api_key='mock', 
+    secret='mock', 
+    demo=True
+)
+
 if __name__ == "__main__":
     pass
