@@ -17,13 +17,14 @@ from tortoise.functions import Sum
 from tortoise.contrib.fastapi import register_tortoise
 
 # Local Imports
-from exchange_client import ExchangeClient
+from exchange_client import exchange_client
 from strategy_engine import StrategyEngine
 from bot_interface import SyndicateBot
 from database.models import MediaAsset, Play, Sale, StatDaily, User, Trade
 from audio_manager import media_manager
 from storage_client import storage_client
 from solana_tracker import whale_tracker
+from indicators import generate_technical_score
 
 # --- CONFIGURATION ---
 SYMBOLS = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT']
@@ -184,10 +185,27 @@ class SyndicateApp:
         logger.info("Starting Syndicate Watcher Loop...")
         while True:
             for symbol in SYMBOLS:
-                technicals = {"price": 65000 if "BTC" in symbol else 3500, "h24_change": 1.5, "volume": 50000000}
-                signal = await self.strategy.analyze_sentiment_and_price(symbol, NEWS_FEED_MOCK, technicals)
-                if signal["action"] != "HOLD" and signal["confidence"] > 70:
-                    logger.info(f"🚨 SIGNAL: {signal['action']} {symbol} | Conf: {signal['confidence']}%")
+                # Fetch live historical OHLCV data for technical analysis
+                # symbol format: 'BTC/USDT', etc. For Solana DEX, maybe different, but let's assume CEX format is handled in ccxt
+                ohlcv = await exchange_client.fetch_ohlcv(symbol, '1h', limit=100)
+                
+                if ohlcv and len(ohlcv) > 50:
+                    prices = [candle[4] for candle in ohlcv] # Close prices
+                    technicals = {
+                        "price": prices[-1],
+                        "h24_change": ((prices[-1] - prices[-24]) / prices[-24] * 100) if len(prices) >= 24 else 0,
+                        "volume": sum([candle[5] for candle in ohlcv[-24:]]) if len(ohlcv) >= 24 else 0
+                    }
+                    indicator_data = generate_technical_score(prices)
+                else:
+                    # Fallback if fetch fails or for unlisted tokens
+                    technicals = {"price": 65000 if "BTC" in symbol else 3500, "h24_change": 1.5, "volume": 50000000}
+                    indicator_data = None
+                
+                signal = await self.strategy.analyze_sentiment_and_price(symbol, NEWS_FEED_MOCK, technicals, indicator_data)
+                
+                if signal.get("action", "HOLD") != "HOLD" and signal.get("confidence", 0) > 70:
+                    logger.info(f"🚨 SIGNAL: {signal.get('action')} {symbol} | Conf: {signal.get('confidence')}% | Tech Score: {signal.get('technical_score')}")
             await asyncio.sleep(300)
 
 # --- INFRASTRUCTURE ---

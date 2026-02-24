@@ -34,6 +34,16 @@ class ExchangeClient:
         except Exception as e:
             print(f"Error fetching positions: {e}")
             return []
+
+    async def fetch_ohlcv(self, symbol: str, timeframe: str = '1h', limit: int = 100):
+        """Fetches historical candlestick data to calculate technical indicators."""
+        try:
+            # OHLCV: [Timestamp, Open, High, Low, Close, Volume]
+            ohlcv = await self.exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
+            return ohlcv
+        except Exception as e:
+            print(f"Error fetching OHLCV for {symbol}: {e}")
+            return []
             
     async def execute_market_order(self, symbol: str, side: str, amount_usdt: float):
         """Executes a market order (BUY/SELL) by value."""
