@@ -184,28 +184,39 @@ class SyndicateApp:
     async def poll_and_mirror(self):
         logger.info("Starting Syndicate Watcher Loop...")
         while True:
-            for symbol in SYMBOLS:
-                # Fetch live historical OHLCV data for technical analysis
-                # symbol format: 'BTC/USDT', etc. For Solana DEX, maybe different, but let's assume CEX format is handled in ccxt
-                ohlcv = await exchange_client.fetch_ohlcv(symbol, '1h', limit=100)
+            try:
+                for symbol in SYMBOLS:
+                    # Fetch live historical OHLCV data for technical analysis
+                    # symbol format: 'BTC/USDT', etc.
+                    ohlcv = await exchange_client.fetch_ohlcv(symbol, '1h', limit=100)
+                    
+                    if isinstance(ohlcv, list) and len(ohlcv) > 50:
+                        prices = [float(candle[4]) for candle in ohlcv if len(candle) > 4] # Close prices
+                        if prices:
+                            technicals = {
+                                "price": prices[-1],
+                                "h24_change": ((prices[-1] - prices[-min(24, len(prices))]) / prices[-min(24, len(prices))] * 100) if len(prices) >= 24 else 0,
+                                "volume": sum([float(candle[5]) for candle in ohlcv[-min(24, len(ohlcv)):] if len(candle) > 5]) if len(ohlcv) >= 24 else 0
+                            }
+                            indicator_data = generate_technical_score(prices)
+                        else:
+                            technicals = {"price": 0.0, "h24_change": 0.0, "volume": 0.0}
+                            indicator_data = None
+                    else:
+                        # Fallback if fetch fails or for unlisted tokens
+                        technicals = {"price": 65000.0 if "BTC" in symbol else 3500.0, "h24_change": 1.5, "volume": 50000000.0}
+                        indicator_data = None
+                    
+                    signal = await self.strategy.analyze_sentiment_and_price(symbol, NEWS_FEED_MOCK, technicals, indicator_data)
+                    
+                    action = signal.get("action", "HOLD")
+                    confidence = signal.get("confidence", 0)
+                    if action != "HOLD" and confidence > 70:
+                        logger.info(f"🚨 SIGNAL: {action} {symbol} | Conf: {confidence}% | Tech Score: {signal.get('technical_score')}")
+                        
+            except Exception as e:
+                logger.error(f"Error in poll loop: {e}")
                 
-                if ohlcv and len(ohlcv) > 50:
-                    prices = [candle[4] for candle in ohlcv] # Close prices
-                    technicals = {
-                        "price": prices[-1],
-                        "h24_change": ((prices[-1] - prices[-24]) / prices[-24] * 100) if len(prices) >= 24 else 0,
-                        "volume": sum([candle[5] for candle in ohlcv[-24:]]) if len(ohlcv) >= 24 else 0
-                    }
-                    indicator_data = generate_technical_score(prices)
-                else:
-                    # Fallback if fetch fails or for unlisted tokens
-                    technicals = {"price": 65000 if "BTC" in symbol else 3500, "h24_change": 1.5, "volume": 50000000}
-                    indicator_data = None
-                
-                signal = await self.strategy.analyze_sentiment_and_price(symbol, NEWS_FEED_MOCK, technicals, indicator_data)
-                
-                if signal.get("action", "HOLD") != "HOLD" and signal.get("confidence", 0) > 70:
-                    logger.info(f"🚨 SIGNAL: {signal.get('action')} {symbol} | Conf: {signal.get('confidence')}% | Tech Score: {signal.get('technical_score')}")
             await asyncio.sleep(300)
 
 # --- INFRASTRUCTURE ---
