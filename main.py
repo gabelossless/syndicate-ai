@@ -25,10 +25,12 @@ from audio_manager import media_manager
 from storage_client import storage_client
 from solana_tracker import whale_tracker
 from indicators import generate_technical_score
+from news_client import news_client
+from portfolio_tracker import portfolio_tracker
+from backtester import backtester
 
 # --- CONFIGURATION ---
 SYMBOLS = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT']
-NEWS_FEED_MOCK = "Bullish momentum continues as institutional interest grows in Solana ecosystem."
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite://syndicate.db")
 UPLOAD_DIR = "syndicate-ai/uploads"
 
@@ -174,6 +176,37 @@ async def delete_media(media_id: int):
     await MediaAsset.filter(id=media_id).delete()
     return {"status": "deleted"}
 
+@app.get("/api/portfolio")
+async def get_portfolio():
+    """Returns a real-time aggregated snapshot of CEX and Solana balances."""
+    snapshot = await portfolio_tracker.get_full_snapshot()
+    return snapshot
+
+class BacktestRequest(BaseModel):
+    symbol: str = "BTC/USDT"
+    timeframe: str = "1h"
+    limit: int = 300
+
+@app.post("/api/backtest")
+async def run_backtest(req: BacktestRequest):
+    """Runs a strategy backtest and returns performance metrics + HTML report link."""
+    result = await backtester.run(req.symbol, req.timeframe, req.limit)
+    html = backtester.generate_html_report(result, req.symbol)
+    report_path = "backtest_report.html"
+    with open(report_path, "w", encoding="utf-8") as f:
+        f.write(html)
+    return {
+        "symbol": req.symbol,
+        "timeframe": req.timeframe,
+        "total_return_pct": result.total_return_pct,
+        "win_rate": result.win_rate,
+        "max_drawdown": result.max_drawdown,
+        "sharpe_ratio": result.sharpe_ratio,
+        "total_trades": len(result.trades),
+        "final_balance": result.final_balance,
+        "report": f"/static/{report_path}",
+    }
+
 # --- APP CLASSES ---
 
 class SyndicateApp:
@@ -186,12 +219,10 @@ class SyndicateApp:
         while True:
             try:
                 for symbol in SYMBOLS:
-                    # Fetch live historical OHLCV data for technical analysis
-                    # symbol format: 'BTC/USDT', etc.
                     ohlcv = await exchange_client.fetch_ohlcv(symbol, '1h', limit=100)
                     
                     if isinstance(ohlcv, list) and len(ohlcv) > 50:
-                        prices = [float(candle[4]) for candle in ohlcv if len(candle) > 4] # Close prices
+                        prices = [float(candle[4]) for candle in ohlcv if len(candle) > 4]
                         if prices:
                             technicals = {
                                 "price": prices[-1],
@@ -203,11 +234,12 @@ class SyndicateApp:
                             technicals = {"price": 0.0, "h24_change": 0.0, "volume": 0.0}
                             indicator_data = None
                     else:
-                        # Fallback if fetch fails or for unlisted tokens
                         technicals = {"price": 65000.0 if "BTC" in symbol else 3500.0, "h24_change": 1.5, "volume": 50000000.0}
                         indicator_data = None
-                    
-                    signal = await self.strategy.analyze_sentiment_and_price(symbol, NEWS_FEED_MOCK, technicals, indicator_data)
+
+                    # Fetch LIVE news instead of a mock
+                    live_news = await news_client.fetch_headlines(symbol)
+                    signal = await self.strategy.analyze_sentiment_and_price(symbol, live_news, technicals, indicator_data)
                     
                     action = signal.get("action", "HOLD")
                     confidence = signal.get("confidence", 0)

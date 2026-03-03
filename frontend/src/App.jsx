@@ -4,6 +4,7 @@ import Ticker from './components/Ticker';
 import StatsCard from './components/StatsCard';
 import Leaderboard from './components/Leaderboard';
 import CreatorDashboard from './components/CreatorDashboard';
+import PortfolioTracker from './components/PortfolioTracker';
 import { Activity, DollarSign, Users, Zap, Headphones } from 'lucide-react';
 import axios from 'axios';
 
@@ -120,7 +121,7 @@ function App() {
                 </div>
               </div>
 
-              {/* Sidebar / Connect */}
+              {/* Sidebar */}
               <div className="space-y-8">
                 <div className="glass-card p-8 border-brand-primary/20 bg-gradient-to-b from-brand-primary/10 to-transparent">
                   <h3 className="text-2xl font-black mb-4 flex items-center gap-2">
@@ -145,14 +146,8 @@ function App() {
                   </div>
                 </div>
 
-                {/* Secondary Sidebar Widget */}
-                <div className="glass-card p-6 bg-brand-secondary/5 border-brand-secondary/20">
-                  <p className="text-xs text-brand-secondary font-bold uppercase mb-2">Network Status</p>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-brand-secondary animate-pulse shadow-[0_0_10px_#d946ef]" />
-                    <span className="text-sm font-mono opacity-80 uppercase tracking-tighter">Node 2030-Alpha Active</span>
-                  </div>
-                </div>
+                {/* Live Portfolio Widget */}
+                <PortfolioTracker />
               </div>
             </div>
           </>
